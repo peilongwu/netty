@@ -16,6 +16,7 @@
 package io.netty.handler.codec.http;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.AsciiString;
 
 import java.text.ParseException;
 import java.util.Calendar;
@@ -1330,9 +1331,11 @@ public abstract class HttpHeaders implements Iterable<Map.Entry<String, String>>
     }
 
     static int hash(CharSequence name) {
-        if (name instanceof HttpHeaderEntity) {
-            return ((HttpHeaderEntity) name).hash();
+        if (name instanceof AsciiString) {
+            // AsciiString already calculates positive case-insensitive hash code.
+            return name.hashCode();
         }
+
         int h = 0;
         for (int i = name.length() - 1; i >= 0; i --) {
             char c = name.charAt(i);
@@ -1369,8 +1372,8 @@ public abstract class HttpHeaders implements Iterable<Map.Entry<String, String>>
     }
 
     public static void encodeAscii(CharSequence seq, ByteBuf buf) {
-        if (seq instanceof HttpHeaderEntity) {
-            ((HttpHeaderEntity) seq).encode(buf);
+        if (seq instanceof AsciiString) {
+            ((AsciiString) seq).copy(0, buf, seq.length());
         } else {
             encodeAscii0(seq, buf);
         }
@@ -1391,7 +1394,7 @@ public abstract class HttpHeaders implements Iterable<Map.Entry<String, String>>
         if (name == null) {
             throw new NullPointerException("name");
         }
-        return new HttpHeaderEntity(name);
+        return new AsciiString(name);
     }
 
     protected HttpHeaders() { }

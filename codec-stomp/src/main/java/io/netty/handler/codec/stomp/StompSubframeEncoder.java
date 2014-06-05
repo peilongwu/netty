@@ -17,10 +17,13 @@ package io.netty.handler.codec.stomp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.AsciiString;
 import io.netty.handler.codec.MessageToMessageEncoder;
+import io.netty.handler.codec.TextHeaders;
 import io.netty.util.CharsetUtil;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Encodes a {@link StompFrame} or a {@link StompSubframe} into a {@link ByteBuf}.
@@ -63,14 +66,24 @@ public class StompSubframeEncoder extends MessageToMessageEncoder<StompSubframe>
         buf.writeBytes(frame.command().toString().getBytes(CharsetUtil.US_ASCII));
         buf.writeByte(StompConstants.CR).writeByte(StompConstants.LF);
 
-        StompHeaders headers = frame.headers();
-        for (String k: headers.keySet()) {
-            List<String> values = headers.getAll(k);
-            for (String v: values) {
-                buf.writeBytes(k.getBytes(CharsetUtil.US_ASCII)).
-                        writeByte(StompConstants.COLON).writeBytes(v.getBytes(CharsetUtil.US_ASCII));
-                buf.writeByte(StompConstants.CR).writeByte(StompConstants.LF);
+        TextHeaders headers = frame.headers();
+        for (Map.Entry<CharSequence, CharSequence> e: headers.unconvertedEntries()) {
+            CharSequence k = e.getKey();
+            CharSequence v = e.getValue();
+            if (k instanceof AsciiString) {
+                AsciiString kstr = (AsciiString) k;
+                buf.writeBytes(kstr.array(), kstr.arrayOffset(), kstr.length());
+            } else {
+                buf.writeBytes(k.toString().getBytes(CharsetUtil.US_ASCII));
             }
+            buf.writeByte(StompConstants.COLON);
+            if (v instanceof AsciiString) {
+                AsciiString vstr = (AsciiString) v;
+                buf.writeBytes(vstr.array(), vstr.arrayOffset(), vstr.length());
+            } else {
+                buf.writeBytes(v.toString().getBytes(CharsetUtil.US_ASCII));
+            }
+            buf.writeByte(StompConstants.CR).writeByte(StompConstants.LF);
         }
         buf.writeByte(StompConstants.CR).writeByte(StompConstants.LF);
         return buf;

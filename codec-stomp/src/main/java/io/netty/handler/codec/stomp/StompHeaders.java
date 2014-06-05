@@ -15,93 +15,32 @@
  */
 package io.netty.handler.codec.stomp;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import io.netty.handler.codec.AsciiString;
 
 /**
- * Provides the constants for the standard STOMP header names and values and
- * commonly used utility methods that accesses an {@link StompHeadersSubframe}.
+ * Provides the constants for the standard STOMP header names and values.
  */
-public class StompHeaders {
+public final class StompHeaders {
 
-    public static final String ACCEPT_VERSION = "accept-version";
-    public static final String HOST = "host";
-    public static final String LOGIN = "login";
-    public static final String PASSCODE = "passcode";
-    public static final String HEART_BEAT = "heart-beat";
-    public static final String VERSION = "version";
-    public static final String SESSION = "session";
-    public static final String SERVER = "server";
-    public static final String DESTINATION = "destination";
-    public static final String ID = "id";
-    public static final String ACK = "ack";
-    public static final String TRANSACTION = "transaction";
-    public static final String RECEIPT = "receipt";
-    public static final String MESSAGE_ID = "message-id";
-    public static final String SUBSCRIPTION = "subscription";
-    public static final String RECEIPT_ID = "receipt-id";
-    public static final String MESSAGE = "message";
-    public static final String CONTENT_LENGTH = "content-length";
-    public static final String CONTENT_TYPE = "content-type";
+    public static final AsciiString ACCEPT_VERSION = new AsciiString("accept-version");
+    public static final AsciiString HOST = new AsciiString("host");
+    public static final AsciiString LOGIN = new AsciiString("login");
+    public static final AsciiString PASSCODE = new AsciiString("passcode");
+    public static final AsciiString HEART_BEAT = new AsciiString("heart-beat");
+    public static final AsciiString VERSION = new AsciiString("version");
+    public static final AsciiString SESSION = new AsciiString("session");
+    public static final AsciiString SERVER = new AsciiString("server");
+    public static final AsciiString DESTINATION = new AsciiString("destination");
+    public static final AsciiString ID = new AsciiString("id");
+    public static final AsciiString ACK = new AsciiString("ack");
+    public static final AsciiString TRANSACTION = new AsciiString("transaction");
+    public static final AsciiString RECEIPT = new AsciiString("receipt");
+    public static final AsciiString MESSAGE_ID = new AsciiString("message-id");
+    public static final AsciiString SUBSCRIPTION = new AsciiString("subscription");
+    public static final AsciiString RECEIPT_ID = new AsciiString("receipt-id");
+    public static final AsciiString MESSAGE = new AsciiString("message");
+    public static final AsciiString CONTENT_LENGTH = new AsciiString("content-length");
+    public static final AsciiString CONTENT_TYPE = new AsciiString("content-type");
 
-    private final Map<String, List<String>> headers = new LinkedHashMap<String, List<String>>();
-
-    public boolean has(String key) {
-        List<String> values = headers.get(key);
-        return values != null && !values.isEmpty();
-    }
-
-    public String get(String key) {
-        List<String> values = headers.get(key);
-        if (values != null && !values.isEmpty()) {
-            return values.get(0);
-        } else {
-            return null;
-        }
-    }
-
-    public void add(String key, String value) {
-        List<String> values = headers.get(key);
-        if (values == null) {
-            values = new ArrayList<String>();
-            headers.put(key, values);
-        }
-        values.add(value);
-    }
-
-    @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void set(String key, String value) {
-        headers.put(key, Arrays.asList(value));
-    }
-
-    public List<String> getAll(String key) {
-        List<String> values = headers.get(key);
-        if (values != null) {
-            return new ArrayList<String>(values);
-        } else {
-            return new ArrayList<String>();
-        }
-    }
-
-    public Set<String> keySet() {
-        return headers.keySet();
-    }
-
-    @Override
-    public String toString() {
-        return "StompHeaders{" +
-            headers +
-            '}';
-    }
-
-    public void set(StompHeaders headers) {
-        for (String key: headers.keySet()) {
-            List<String> values = headers.getAll(key);
-            this.headers.put(key, values);
-        }
-    }
+    private StompHeaders() { }
 }
