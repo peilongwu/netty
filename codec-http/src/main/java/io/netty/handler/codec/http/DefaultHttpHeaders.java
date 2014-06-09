@@ -38,11 +38,12 @@ public class DefaultHttpHeaders extends HttpHeaders {
     public DefaultHttpHeaders(final boolean validate) {
         headers = new DefaultTextHeaders() {
             @Override
-            protected void validateKey(CharSequence key) {
-                super.validateKey(key);
+            protected CharSequence convertName(CharSequence name) {
+                name = super.convertName(name);
                 if (validate) {
-                    validateHeaderName0(key);
+                    validateHeaderName0(name);
                 }
+                return name;
             }
 
             @Override

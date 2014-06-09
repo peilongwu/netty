@@ -18,14 +18,22 @@ package io.netty.handler.codec;
 
 import io.netty.util.internal.PlatformDependent;
 
+import java.text.DateFormat;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.TimeZone;
 
 public class DefaultTextHeaders implements TextHeaders {
 
@@ -50,14 +58,29 @@ public class DefaultTextHeaders implements TextHeaders {
         this.ignoreCase = ignoreCase;
     }
 
-    protected int hashKey(CharSequence key) {
-        return key.hashCode();
+    protected int hashCode(CharSequence name) {
+        if (name instanceof AsciiString) {
+            return name.hashCode();
+        }
+
+        // Note: this must be identical to AsciiString.hashCode().
+        int hash = 0;
+        for (int i = 0; i < name.length(); i ++) {
+            char ch = name.charAt(i);
+            if (ch >= 'A' && ch <= 'Z') {
+                ch += 32;
+            }
+            hash = 31 * hash + ch;
+        }
+
+        return hash == 0? 1 : hash;
     }
 
-    protected void validateKey(CharSequence key) {
-        if (key == null) {
-            throw new NullPointerException("key");
+    protected CharSequence convertName(CharSequence name) {
+        if (name == null) {
+            throw new NullPointerException("name");
         }
+        return name;
     }
 
     @SuppressWarnings("unchecked")
@@ -71,7 +94,7 @@ public class DefaultTextHeaders implements TextHeaders {
         return value.toString();
     }
 
-    protected boolean keyEquals(CharSequence a, CharSequence b) {
+    protected boolean nameEquals(CharSequence a, CharSequence b) {
         return equals(a, b, ignoreCase);
     }
 
@@ -110,58 +133,58 @@ public class DefaultTextHeaders implements TextHeaders {
     }
 
     @Override
-    public TextHeaders add(CharSequence key, Object value) {
-        validateKey(key);
+    public TextHeaders add(CharSequence name, Object value) {
+        name = convertName(name);
         CharSequence convertedVal = convertValue(value);
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
-        add0(h, i, key, convertedVal);
+        add0(h, i, name, convertedVal);
         return this;
     }
 
     @Override
-    public TextHeaders add(CharSequence key, Iterable<?> values) {
-        validateKey(key);
+    public TextHeaders add(CharSequence name, Iterable<?> values) {
+        name = convertName(name);
         if (values == null) {
             throw new NullPointerException("values");
         }
 
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
         for (Object v: values) {
             if (v == null) {
                 break;
             }
             CharSequence convertedVal = convertValue(v);
-            add0(h, i, key, convertedVal);
+            add0(h, i, name, convertedVal);
         }
         return this;
     }
 
     @Override
-    public TextHeaders add(CharSequence key, Object... values) {
-        validateKey(key);
+    public TextHeaders add(CharSequence name, Object... values) {
+        name = convertName(name);
         if (values == null) {
             throw new NullPointerException("values");
         }
 
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
         for (Object v: values) {
             if (v == null) {
                 break;
             }
             CharSequence convertedVal = convertValue(v);
-            add0(h, i, key, convertedVal);
+            add0(h, i, name, convertedVal);
         }
         return this;
     }
 
-    private void add0(int h, int i, CharSequence key, CharSequence value) {
+    private void add0(int h, int i, CharSequence name, CharSequence value) {
         // Update the hash table.
         HeaderEntry e = entries[i];
         HeaderEntry newEntry;
-        entries[i] = newEntry = new HeaderEntry(this, h, key, value);
+        entries[i] = newEntry = new HeaderEntry(this, h, name, value);
         newEntry.next = e;
 
         // Update the linked list.
@@ -188,9 +211,9 @@ public class DefaultTextHeaders implements TextHeaders {
             DefaultTextHeaders m = (DefaultTextHeaders) headers;
             HeaderEntry e = m.head.after;
             while (e != m.head) {
-                CharSequence key = e.key;
-                validateKey(key);
-                add(key, convertValue(e.value));
+                CharSequence name = e.name;
+                name = convertName(name);
+                add(name, convertValue(e.value));
                 e = e.after;
             }
         } else {
@@ -201,16 +224,16 @@ public class DefaultTextHeaders implements TextHeaders {
     }
 
     @Override
-    public boolean remove(CharSequence key) {
-        if (key == null) {
-            throw new NullPointerException("key");
+    public boolean remove(CharSequence name) {
+        if (name == null) {
+            throw new NullPointerException("name");
         }
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
-        return remove0(h, i, key);
+        return remove0(h, i, name);
     }
 
-    private boolean remove0(int h, int i, CharSequence key) {
+    private boolean remove0(int h, int i, CharSequence name) {
         HeaderEntry e = entries[i];
         if (e == null) {
             return false;
@@ -218,7 +241,7 @@ public class DefaultTextHeaders implements TextHeaders {
 
         boolean removed = false;
         for (;;) {
-            if (e.hash == h && keyEquals(e.key, key)) {
+            if (e.hash == h && nameEquals(e.name, name)) {
                 e.remove();
                 HeaderEntry next = e.next;
                 if (next != null) {
@@ -239,7 +262,7 @@ public class DefaultTextHeaders implements TextHeaders {
             if (next == null) {
                 break;
             }
-            if (next.hash == h && keyEquals(next.key, key)) {
+            if (next.hash == h && nameEquals(next.name, name)) {
                 e.next = next.next;
                 next.remove();
                 removed = true;
@@ -252,55 +275,55 @@ public class DefaultTextHeaders implements TextHeaders {
     }
 
     @Override
-    public TextHeaders set(CharSequence key, Object value) {
-        validateKey(key);
+    public TextHeaders set(CharSequence name, Object value) {
+        name = convertName(name);
         CharSequence convertedVal = convertValue(value);
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
-        remove0(h, i, key);
-        add0(h, i, key, convertedVal);
+        remove0(h, i, name);
+        add0(h, i, name, convertedVal);
         return this;
     }
 
     @Override
-    public TextHeaders set(CharSequence key, Iterable<?> values) {
-        validateKey(key);
+    public TextHeaders set(CharSequence name, Iterable<?> values) {
+        name = convertName(name);
         if (values == null) {
             throw new NullPointerException("values");
         }
 
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
 
-        remove0(h, i, key);
+        remove0(h, i, name);
         for (Object v: values) {
             if (v == null) {
                 break;
             }
             CharSequence convertedVal = convertValue(v);
-            add0(h, i, key, convertedVal);
+            add0(h, i, name, convertedVal);
         }
 
         return this;
     }
 
     @Override
-    public TextHeaders set(CharSequence key, Object... values) {
-        validateKey(key);
+    public TextHeaders set(CharSequence name, Object... values) {
+        name = convertName(name);
         if (values == null) {
             throw new NullPointerException("values");
         }
 
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
 
-        remove0(h, i, key);
+        remove0(h, i, name);
         for (Object v: values) {
             if (v == null) {
                 break;
             }
             CharSequence convertedVal = convertValue(v);
-            add0(h, i, key, convertedVal);
+            add0(h, i, name, convertedVal);
         }
 
         return this;
@@ -326,18 +349,18 @@ public class DefaultTextHeaders implements TextHeaders {
     }
 
     @Override
-    public CharSequence getUnconverted(CharSequence key) {
-        if (key == null) {
-            throw new NullPointerException("key");
+    public CharSequence getUnconverted(CharSequence name) {
+        if (name == null) {
+            throw new NullPointerException("name");
         }
 
-        int h = hashKey(key);
+        int h = hashCode(name);
         int i = index(h);
         HeaderEntry e = entries[i];
         CharSequence value = null;
         // loop until the first header was found
         while (e != null) {
-            if (e.hash == h && keyEquals(e.key, key)) {
+            if (e.hash == h && nameEquals(e.name, name)) {
                 value = e.value;
             }
 
@@ -350,8 +373,8 @@ public class DefaultTextHeaders implements TextHeaders {
     }
 
     @Override
-    public String get(CharSequence key) {
-        CharSequence v = getUnconverted(key);
+    public String get(CharSequence name) {
+        CharSequence v = getUnconverted(name);
         if (v == null) {
             return null;
         }
@@ -359,51 +382,100 @@ public class DefaultTextHeaders implements TextHeaders {
     }
 
     @Override
-    public List<CharSequence> getAllUnconverted(CharSequence key) {
-        if (key == null) {
-            throw new NullPointerException("key");
+    public String get(CharSequence name, String defaultValue) {
+        CharSequence v = getUnconverted(name);
+        if (v == null) {
+            return defaultValue;
         }
-
-        int cnt = 0;
-        int size = size();
-        CharSequence[] values = new CharSequence[size];
-
-        int h = hashKey(key);
-        int i = index(h);
-        HeaderEntry e = entries[i];
-        while (e != null) {
-            if (e.hash == h && keyEquals(e.key, key)) {
-                values[cnt ++] = e.getValue();
-            }
-            e = e.next;
-        }
-
-        assert size == cnt;
-        return Arrays.asList(values);
+        return v.toString();
     }
 
     @Override
-    public List<String> getAll(CharSequence key) {
-        if (key == null) {
-            throw new NullPointerException("key");
+    public int getInt(CharSequence name, int defaultValue) {
+        CharSequence v = getUnconverted(name);
+        if (v == null) {
+            return defaultValue;
         }
 
-        int cnt = 0;
-        int size = size();
-        String[] values = new String[size];
+        try {
+            if (v instanceof AsciiString) {
+                return ((AsciiString) v).parseInt();
+            } else {
+                return Integer.parseInt(v.toString());
+            }
+        } catch (NumberFormatException ignored) {
+            return defaultValue;
+        }
+    }
 
-        int h = hashKey(key);
+    @Override
+    public long getLong(CharSequence name, long defaultValue) {
+        CharSequence v = getUnconverted(name);
+        if (v == null) {
+            return defaultValue;
+        }
+
+        try {
+            if (v instanceof AsciiString) {
+                return ((AsciiString) v).parseLong();
+            } else {
+                return Long.parseLong(v.toString());
+            }
+        } catch (NumberFormatException ignored) {
+            return defaultValue;
+        }
+    }
+
+    @Override
+    public long getTimeMillis(CharSequence name, long defaultValue) {
+        CharSequence v = getUnconverted(name);
+        if (v == null) {
+            return defaultValue;
+        }
+
+        return HttpHeaderDateFormat.get().parse(v.toString(), defaultValue);
+    }
+
+    @Override
+    public List<CharSequence> getAllUnconverted(CharSequence name) {
+        if (name == null) {
+            throw new NullPointerException("name");
+        }
+
+        List<CharSequence> values = new ArrayList<CharSequence>(4);
+        int h = hashCode(name);
         int i = index(h);
         HeaderEntry e = entries[i];
         while (e != null) {
-            if (e.hash == h && keyEquals(e.key, key)) {
-                values[cnt ++] = e.getValue().toString();
+            if (e.hash == h && nameEquals(e.name, name)) {
+                values.add(e.getValue());
             }
             e = e.next;
         }
 
-        assert size == cnt;
-        return Arrays.asList(values);
+        Collections.reverse(values);
+        return values;
+    }
+
+    @Override
+    public List<String> getAll(CharSequence name) {
+        if (name == null) {
+            throw new NullPointerException("name");
+        }
+
+        List<String> values = new ArrayList<String>(4);
+        int h = hashCode(name);
+        int i = index(h);
+        HeaderEntry e = entries[i];
+        while (e != null) {
+            if (e.hash == h && nameEquals(e.name, name)) {
+                values.add(e.getValue().toString());
+            }
+            e = e.next;
+        }
+
+        Collections.reverse(values);
+        return values;
     }
 
     @Override
@@ -451,8 +523,8 @@ public class DefaultTextHeaders implements TextHeaders {
     }
 
     @Override
-    public boolean contains(CharSequence key) {
-        return getUnconverted(key) != null;
+    public boolean contains(CharSequence name) {
+        return getUnconverted(name) != null;
     }
 
     @Override
@@ -476,12 +548,12 @@ public class DefaultTextHeaders implements TextHeaders {
             throw new NullPointerException("name");
         }
 
-        int h = hashKey(name);
+        int h = hashCode(name);
         int i = index(h);
         CharSequence convertedVal = convertValue(value);
         HeaderEntry e = entries[i];
         while (e != null) {
-            if (e.hash == h && keyEquals(e.key, name)) {
+            if (e.hash == h && nameEquals(e.name, name)) {
                 if (valueEquals(e.value, convertedVal, ignoreCase)) {
                     return true;
                 }
@@ -493,24 +565,24 @@ public class DefaultTextHeaders implements TextHeaders {
 
     @Override
     public Set<CharSequence> unconvertedNames() {
-        Set<CharSequence> keys = new LinkedHashSet<CharSequence>(size());
+        Set<CharSequence> names = new LinkedHashSet<CharSequence>(size());
         HeaderEntry e = head.after;
         while (e != head) {
-            keys.add(e.getKey());
+            names.add(e.getKey());
             e = e.after;
         }
-        return keys;
+        return names;
     }
 
     @Override
     public Set<String> names() {
-        Set<String> keys = new LinkedHashSet<String>(size());
+        Set<String> names = new LinkedHashSet<String>(size());
         HeaderEntry e = head.after;
         while (e != head) {
-            keys.add(e.getKey().toString());
+            names.add(e.getKey().toString());
             e = e.after;
         }
-        return keys;
+        return names;
     }
 
     @Override
@@ -532,22 +604,22 @@ public class DefaultTextHeaders implements TextHeaders {
     private static final class HeaderEntry implements Map.Entry<CharSequence, CharSequence> {
         private final DefaultTextHeaders parent;
         final int hash;
-        final CharSequence key;
+        final CharSequence name;
         CharSequence value;
         HeaderEntry next;
         HeaderEntry before, after;
 
-        HeaderEntry(DefaultTextHeaders parent, int hash, CharSequence key, CharSequence value) {
+        HeaderEntry(DefaultTextHeaders parent, int hash, CharSequence name, CharSequence value) {
             this.parent = parent;
             this.hash = hash;
-            this.key = key;
+            this.name = name;
             this.value = value;
         }
 
         HeaderEntry(DefaultTextHeaders parent) {
             this.parent = parent;
             hash = -1;
-            key = null;
+            name = null;
             value = null;
         }
 
@@ -567,7 +639,7 @@ public class DefaultTextHeaders implements TextHeaders {
 
         @Override
         public CharSequence getKey() {
-            return key;
+            return name;
         }
 
         @Override
@@ -588,14 +660,14 @@ public class DefaultTextHeaders implements TextHeaders {
 
         @Override
         public String toString() {
-            return key.toString() + '=' + value.toString();
+            return name.toString() + '=' + value.toString();
         }
     }
 
 
     private static final class StringHeaderEntry implements Entry<String, String> {
         private final Entry<CharSequence, CharSequence> entry;
-        private String key;
+        private String name;
         private String value;
 
         StringHeaderEntry(Entry<CharSequence, CharSequence> entry) {
@@ -604,10 +676,10 @@ public class DefaultTextHeaders implements TextHeaders {
 
         @Override
         public String getKey() {
-            if (key == null) {
-                key = entry.getKey().toString();
+            if (name == null) {
+                name = entry.getKey().toString();
             }
-            return key;
+            return name;
         }
 
         @Override
@@ -678,6 +750,69 @@ public class DefaultTextHeaders implements TextHeaders {
         @Override
         public void remove() {
             throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
+     * This DateFormat decodes 3 formats of {@link java.util.Date}, but only encodes the one,
+     * the first:
+     * <ul>
+     * <li>Sun, 06 Nov 1994 08:49:37 GMT: standard specification, the only one with
+     * valid generation</li>
+     * <li>Sun, 06 Nov 1994 08:49:37 GMT: obsolete specification</li>
+     * <li>Sun Nov 6 08:49:37 1994: obsolete specification</li>
+     * </ul>
+     */
+    static final class HttpHeaderDateFormat {
+
+        private static final ParsePosition parsePos = new ParsePosition(0);
+        private static final ThreadLocal<HttpHeaderDateFormat> dateFormatThreadLocal =
+                new ThreadLocal<HttpHeaderDateFormat>() {
+                    @Override
+                    protected HttpHeaderDateFormat initialValue() {
+                        return new HttpHeaderDateFormat();
+                    }
+                };
+
+        static HttpHeaderDateFormat get() {
+            return dateFormatThreadLocal.get();
+        }
+
+        /**
+         * Standard date format:
+         * <pre>Sun, 06 Nov 1994 08:49:37 GMT -> E, d MMM yyyy HH:mm:ss z</pre>
+         */
+        private final DateFormat dateFormat1 = new SimpleDateFormat("E, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
+        /**
+         * First obsolete format:
+         * <pre>Sunday, 06-Nov-94 08:49:37 GMT -> E, d-MMM-y HH:mm:ss z</pre>
+         */
+        private final DateFormat dateFormat2 = new SimpleDateFormat("E, dd-MMM-yy HH:mm:ss z", Locale.ENGLISH);
+        /**
+         * Second obsolete format
+         * <pre></pre>Sun Nov 6 08:49:37 1994 -> EEE, MMM d HH:mm:ss yyyy</pre>
+         */
+        private final DateFormat dateFormat3 = new SimpleDateFormat("E MMM d HH:mm:ss yyyy", Locale.ENGLISH);
+
+        private HttpHeaderDateFormat() {
+            TimeZone tz = TimeZone.getTimeZone("GMT");
+            dateFormat1.setTimeZone(tz);
+            dateFormat2.setTimeZone(tz);
+            dateFormat3.setTimeZone(tz);
+        }
+
+        long parse(String text, long defaultValue) {
+            Date date = dateFormat1.parse(text, parsePos);
+            if (date == null) {
+                date = dateFormat2.parse(text, parsePos);
+            }
+            if (date == null) {
+                date = dateFormat3.parse(text, parsePos);
+            }
+            if (date == null) {
+                return defaultValue;
+            }
+            return date.getTime();
         }
     }
 }

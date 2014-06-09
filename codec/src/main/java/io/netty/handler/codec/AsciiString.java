@@ -306,6 +306,10 @@ public final class AsciiString implements CharSequence, Comparable<CharSequence>
     }
 
     public String toString(int start, int end) {
+        if (start == 0 && end == valueLen) {
+            return toString();
+        }
+
         int length = end - start;
         if (length == 0) {
             return "";

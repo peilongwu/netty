@@ -15,365 +15,223 @@
  */
 package io.netty.handler.codec.spdy;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.TreeSet;
+import io.netty.handler.codec.AsciiString;
+import io.netty.handler.codec.DefaultTextHeaders;
+import io.netty.handler.codec.TextHeaderProcessor;
+import io.netty.handler.codec.TextHeaders;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 
 
-public class DefaultSpdyHeaders extends SpdyHeaders {
-
-    private static final int BUCKET_SIZE = 17;
-
-    private static int hash(String name) {
-        int h = 0;
-        for (int i = name.length() - 1; i >= 0; i --) {
-            char c = name.charAt(i);
-            if (c >= 'A' && c <= 'Z') {
-                c += 32;
-            }
-            h = 31 * h + c;
-        }
-
-        if (h > 0) {
-            return h;
-        } else if (h == Integer.MIN_VALUE) {
-            return Integer.MAX_VALUE;
+public class DefaultSpdyHeaders extends DefaultTextHeaders implements SpdyHeaders {
+    @Override
+    protected CharSequence convertName(CharSequence name) {
+        name = super.convertName(name);
+        if (name instanceof AsciiString) {
+            name = ((AsciiString) name).toLowerCase();
         } else {
-            return -h;
+            name = name.toString().toLowerCase();
         }
-    }
-
-    private static boolean eq(String name1, String name2) {
-        int nameLen = name1.length();
-        if (nameLen != name2.length()) {
-            return false;
-        }
-
-        for (int i = nameLen - 1; i >= 0; i --) {
-            char c1 = name1.charAt(i);
-            char c2 = name2.charAt(i);
-            if (c1 != c2) {
-                if (c1 >= 'A' && c1 <= 'Z') {
-                    c1 += 32;
-                }
-                if (c2 >= 'A' && c2 <= 'Z') {
-                    c2 += 32;
-                }
-                if (c1 != c2) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private static int index(int hash) {
-        return hash % BUCKET_SIZE;
-    }
-
-    private final HeaderEntry[] entries = new HeaderEntry[BUCKET_SIZE];
-    private final HeaderEntry head = new HeaderEntry(-1, null, null);
-
-    DefaultSpdyHeaders() {
-        head.before = head.after = head;
+        SpdyCodecUtil.validateHeaderName(name);
+        return name;
     }
 
     @Override
-    public SpdyHeaders add(final String name, final Object value) {
-        String lowerCaseName = name.toLowerCase();
-        SpdyCodecUtil.validateHeaderName(lowerCaseName);
-        String strVal = toString(value);
-        SpdyCodecUtil.validateHeaderValue(strVal);
-        int h = hash(lowerCaseName);
-        int i = index(h);
-        add0(h, i, lowerCaseName, strVal);
-        return this;
-    }
+    protected CharSequence convertValue(Object value) {
+        if (value == null) {
+            throw new NullPointerException("value");
+        }
 
-    private void add0(int h, int i, final String name, final String value) {
-        // Update the hash table.
-        HeaderEntry e = entries[i];
-        HeaderEntry newEntry;
-        entries[i] = newEntry = new HeaderEntry(h, name, value);
-        newEntry.next = e;
+        CharSequence seq;
+        if (value instanceof CharSequence) {
+            seq = (CharSequence) value;
+        } else {
+            seq = value.toString();
+        }
 
-        // Update the linked list.
-        newEntry.addBefore(head);
+        SpdyCodecUtil.validateHeaderValue(seq);
+        return seq;
     }
 
     @Override
-    public SpdyHeaders remove(final String name) {
-        if (name == null) {
-            throw new NullPointerException("name");
-        }
-        String lowerCaseName = name.toLowerCase();
-        int h = hash(lowerCaseName);
-        int i = index(h);
-        remove0(h, i, lowerCaseName);
+    public boolean removeHost() {
+        return remove(HttpNames.HOST);
+    }
+
+    @Override
+    public String getHost() {
+        return get(HttpNames.HOST);
+    }
+
+    @Override
+    public SpdyHeaders setHost(String host) {
+        set(HttpNames.HOST, host);
         return this;
     }
 
-    private void remove0(int h, int i, String name) {
-        HeaderEntry e = entries[i];
-        if (e == null) {
-            return;
-        }
+    @Override
+    public boolean removeMethod(int spdyVersion) {
+        return remove(HttpNames.METHOD);
+    }
 
-        for (;;) {
-            if (e.hash == h && eq(name, e.key)) {
-                e.remove();
-                HeaderEntry next = e.next;
-                if (next != null) {
-                    entries[i] = next;
-                    e = next;
+    @Override
+    public HttpMethod getMethod(int spdyVersion) {
+        try {
+            return HttpMethod.valueOf(get(HttpNames.METHOD));
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    @Override
+    public SpdyHeaders setMethod(int spdyVersion, HttpMethod method) {
+        set(HttpNames.METHOD, method.name());
+        return this;
+    }
+
+    @Override
+    public boolean removeScheme(int spdyVersion) {
+        return remove(HttpNames.SCHEME);
+    }
+
+    @Override
+    public String getScheme(int spdyVersion) {
+        return get(HttpNames.SCHEME);
+    }
+
+    @Override
+    public SpdyHeaders setScheme(int spdyVersion,String scheme) {
+        set(HttpNames.SCHEME, scheme);
+        return this;
+    }
+
+    @Override
+    public boolean removeStatus(int spdyVersion) {
+        return remove(HttpNames.STATUS);
+    }
+
+    @Override
+    public HttpResponseStatus getStatus(int spdyVersion) {
+        try {
+            String status = get(HttpNames.STATUS);
+            int space = status.indexOf(' ');
+            if (space == -1) {
+                return HttpResponseStatus.valueOf(Integer.parseInt(status));
+            } else {
+                int code = Integer.parseInt(status.substring(0, space));
+                String reasonPhrase = status.substring(space + 1);
+                HttpResponseStatus responseStatus = HttpResponseStatus.valueOf(code);
+                if (responseStatus.reasonPhrase().equals(reasonPhrase)) {
+                    return responseStatus;
                 } else {
-                    entries[i] = null;
-                    return;
+                    return new HttpResponseStatus(code, reasonPhrase);
                 }
-            } else {
-                break;
             }
-        }
-
-        for (;;) {
-            HeaderEntry next = e.next;
-            if (next == null) {
-                break;
-            }
-            if (next.hash == h && eq(name, next.key)) {
-                e.next = next.next;
-                next.remove();
-            } else {
-                e = next;
-            }
+        } catch (Exception ignored) {
+            return null;
         }
     }
 
     @Override
-    public SpdyHeaders set(final String name, final Object value) {
-        String lowerCaseName = name.toLowerCase();
-        SpdyCodecUtil.validateHeaderName(lowerCaseName);
-        String strVal = toString(value);
-        SpdyCodecUtil.validateHeaderValue(strVal);
-        int h = hash(lowerCaseName);
-        int i = index(h);
-        remove0(h, i, lowerCaseName);
-        add0(h, i, lowerCaseName, strVal);
+    public SpdyHeaders setStatus(int spdyVersion, HttpResponseStatus status) {
+        set(HttpNames.STATUS, status.toString());
         return this;
     }
 
     @Override
-    public SpdyHeaders set(final String name, final Iterable<?> values) {
-        if (values == null) {
-            throw new NullPointerException("values");
+    public boolean removePath(int spdyVersion) {
+        return remove(HttpNames.PATH);
+    }
+
+    @Override
+    public String getPath(int spdyVersion) {
+        return get(HttpNames.PATH);
+    }
+
+    @Override
+    public SpdyHeaders setPath(int spdyVersion, String path) {
+        set(HttpNames.PATH, path);
+        return this;
+    }
+
+    @Override
+    public boolean removeVersion(int spdyVersion) {
+        return remove(HttpNames.VERSION);
+    }
+
+    @Override
+    public HttpVersion getVersion(int spdyVersion) {
+        try {
+            return HttpVersion.valueOf(get(HttpNames.VERSION));
+        } catch (Exception ignored) {
+            return null;
         }
+    }
 
-        String lowerCaseName = name.toLowerCase();
-        SpdyCodecUtil.validateHeaderName(lowerCaseName);
+    @Override
+    public SpdyHeaders setVersion(int spdyVersion, HttpVersion httpVersion) {
+        set(HttpNames.VERSION, httpVersion.text());
+        return this;
+    }
 
-        int h = hash(lowerCaseName);
-        int i = index(h);
+    @Override
+    public SpdyHeaders add(CharSequence name, Object value) {
+        super.add(name, value);
+        return this;
+    }
 
-        remove0(h, i, lowerCaseName);
-        for (Object v: values) {
-            if (v == null) {
-                break;
-            }
-            String strVal = toString(v);
-            SpdyCodecUtil.validateHeaderValue(strVal);
-            add0(h, i, lowerCaseName, strVal);
-        }
+    @Override
+    public SpdyHeaders add(CharSequence name, Iterable<?> values) {
+        super.add(name, values);
+        return this;
+    }
+
+    @Override
+    public SpdyHeaders add(CharSequence name, Object... values) {
+        super.add(name, values);
+        return this;
+    }
+
+    @Override
+    public SpdyHeaders add(TextHeaders headers) {
+        super.add(headers);
+        return this;
+    }
+
+    @Override
+    public SpdyHeaders set(CharSequence name, Object value) {
+        super.set(name, value);
+        return this;
+    }
+
+    @Override
+    public SpdyHeaders set(CharSequence name, Object... values) {
+        super.set(name, values);
+        return this;
+    }
+
+    @Override
+    public SpdyHeaders set(CharSequence name, Iterable<?> values) {
+        super.set(name, values);
+        return this;
+    }
+
+    @Override
+    public SpdyHeaders set(TextHeaders headers) {
+        super.set(headers);
         return this;
     }
 
     @Override
     public SpdyHeaders clear() {
-        for (int i = 0; i < entries.length; i ++) {
-            entries[i] = null;
-        }
-        head.before = head.after = head;
+        super.clear();
         return this;
     }
 
     @Override
-    public String get(final String name) {
-        if (name == null) {
-            throw new NullPointerException("name");
-        }
-
-        int h = hash(name);
-        int i = index(h);
-        HeaderEntry e = entries[i];
-        while (e != null) {
-            if (e.hash == h && eq(name, e.key)) {
-                return e.value;
-            }
-
-            e = e.next;
-        }
-        return null;
-    }
-
-    @Override
-    public List<String> getAll(final String name) {
-        if (name == null) {
-            throw new NullPointerException("name");
-        }
-
-        LinkedList<String> values = new LinkedList<String>();
-
-        int h = hash(name);
-        int i = index(h);
-        HeaderEntry e = entries[i];
-        while (e != null) {
-            if (e.hash == h && eq(name, e.key)) {
-                values.addFirst(e.value);
-            }
-            e = e.next;
-        }
-        return values;
-    }
-
-    @Override
-    public List<Map.Entry<String, String>> entries() {
-        List<Map.Entry<String, String>> all =
-                new LinkedList<Map.Entry<String, String>>();
-
-        HeaderEntry e = head.after;
-        while (e != head) {
-            all.add(e);
-            e = e.after;
-        }
-        return all;
-    }
-
-    @Override
-    public Iterator<Map.Entry<String, String>> iterator() {
-        return new HeaderIterator();
-    }
-
-    @Override
-    public boolean contains(String name) {
-        return get(name) != null;
-    }
-
-    @Override
-    public Set<String> names() {
-        Set<String> names = new TreeSet<String>();
-
-        HeaderEntry e = head.after;
-        while (e != head) {
-            names.add(e.key);
-            e = e.after;
-        }
-        return names;
-    }
-
-    @Override
-    public SpdyHeaders add(String name, Iterable<?> values) {
-        SpdyCodecUtil.validateHeaderValue(name);
-        int h = hash(name);
-        int i = index(h);
-        for (Object v: values) {
-            String vstr = toString(v);
-            SpdyCodecUtil.validateHeaderValue(vstr);
-            add0(h, i, name, vstr);
-        }
+    public SpdyHeaders forEachEntry(TextHeaderProcessor processor) {
+        super.forEachEntry(processor);
         return this;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return head == head.after;
-    }
-
-    private static String toString(Object value) {
-        if (value == null) {
-            return null;
-        }
-        return value.toString();
-    }
-
-    private final class HeaderIterator implements Iterator<Map.Entry<String, String>> {
-
-        private HeaderEntry current = head;
-
-        @Override
-        public boolean hasNext() {
-            return current.after != head;
-        }
-
-        @Override
-        public Entry<String, String> next() {
-            current = current.after;
-
-            if (current == head) {
-                throw new NoSuchElementException();
-            }
-
-            return current;
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    private static final class HeaderEntry implements Map.Entry<String, String> {
-        final int hash;
-        final String key;
-        String value;
-        HeaderEntry next;
-        HeaderEntry before, after;
-
-        HeaderEntry(int hash, String key, String value) {
-            this.hash = hash;
-            this.key = key;
-            this.value = value;
-        }
-
-        void remove() {
-            before.after = after;
-            after.before = before;
-        }
-
-        void addBefore(HeaderEntry e) {
-            after  = e;
-            before = e.before;
-            before.after = this;
-            after.before = this;
-        }
-
-        @Override
-        public String getKey() {
-            return key;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        @Override
-        public String setValue(String value) {
-            if (value == null) {
-                throw new NullPointerException("value");
-            }
-            SpdyCodecUtil.validateHeaderValue(value);
-            String oldValue = this.value;
-            this.value = value;
-            return oldValue;
-        }
-
-        @Override
-        public String toString() {
-            return key + '=' + value;
-        }
     }
 }
