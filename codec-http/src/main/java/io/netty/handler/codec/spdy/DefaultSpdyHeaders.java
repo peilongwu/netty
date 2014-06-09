@@ -101,7 +101,7 @@ public class DefaultSpdyHeaders extends DefaultTextHeaders implements SpdyHeader
     }
 
     @Override
-    public SpdyHeaders setScheme(int spdyVersion,String scheme) {
+    public SpdyHeaders setScheme(int spdyVersion, String scheme) {
         set(HttpNames.SCHEME, scheme);
         return this;
     }
