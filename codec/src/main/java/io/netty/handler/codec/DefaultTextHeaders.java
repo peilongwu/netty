@@ -664,7 +664,6 @@ public class DefaultTextHeaders implements TextHeaders {
         }
     }
 
-
     private static final class StringHeaderEntry implements Entry<String, String> {
         private final Entry<CharSequence, CharSequence> entry;
         private String name;
@@ -790,7 +789,7 @@ public class DefaultTextHeaders implements TextHeaders {
         private final DateFormat dateFormat2 = new SimpleDateFormat("E, dd-MMM-yy HH:mm:ss z", Locale.ENGLISH);
         /**
          * Second obsolete format
-         * <pre></pre>Sun Nov 6 08:49:37 1994 -> EEE, MMM d HH:mm:ss yyyy</pre>
+         * <pre>Sun Nov 6 08:49:37 1994 -> EEE, MMM d HH:mm:ss yyyy</pre>
          */
         private final DateFormat dateFormat3 = new SimpleDateFormat("E MMM d HH:mm:ss yyyy", Locale.ENGLISH);
 
