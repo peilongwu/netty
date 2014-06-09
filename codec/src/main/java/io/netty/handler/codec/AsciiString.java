@@ -256,16 +256,8 @@ public final class AsciiString implements CharSequence, Comparable<CharSequence>
             hash = 31 * hash + toLowerCase(value[i]);
         }
 
-        // Always yield a positive value so that our hash table's hash function
-        // doesn't need to worry about negative hash code.
         if (hash == 0) {
             hash = 1;
-        } else if (hash < 0) {
-            if (hash == Integer.MIN_VALUE) {
-                hash = Integer.MAX_VALUE;
-            } else {
-                hash = -hash;
-            }
         }
 
         return this.hash = hash;

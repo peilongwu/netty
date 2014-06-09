@@ -16,6 +16,7 @@
 
 package io.netty.handler.codec;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,138 @@ import java.util.Set;
  * treat specially, such as {@link AsciiString}.
  */
 public interface TextHeaders extends Iterable<Map.Entry<String, String>> {
+
+    TextHeaders EMPTY_HEADERS = new TextHeaders() {
+        @Override
+        public String get(CharSequence name) {
+            return null;
+        }
+
+        @Override
+        public CharSequence getUnconverted(CharSequence name) {
+            return null;
+        }
+
+        @Override
+        public List<String> getAll(CharSequence name) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<CharSequence> getAllUnconverted(CharSequence name) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<Entry<String, String>> entries() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<Entry<CharSequence, CharSequence>> unconvertedEntries() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean contains(CharSequence name) {
+            return false;
+        }
+
+        @Override
+        public int size() {
+            return 0;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return true;
+        }
+
+        @Override
+        public Set<String> names() {
+            return Collections.emptySet();
+        }
+
+        @Override
+        public Set<CharSequence> unconvertedNames() {
+            return Collections.emptySet();
+        }
+
+        @Override
+        public TextHeaders add(CharSequence name, Object value) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public TextHeaders add(CharSequence name, Iterable<?> values) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public TextHeaders add(CharSequence name, Object... values) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public TextHeaders add(TextHeaders headers) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public TextHeaders set(CharSequence name, Object value) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public TextHeaders set(CharSequence name, Iterable<?> values) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public TextHeaders set(CharSequence name, Object... values) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public TextHeaders set(TextHeaders headers) {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        @Override
+        public boolean remove(CharSequence name) {
+            return false;
+        }
+
+        @Override
+        public TextHeaders clear() {
+            return this;
+        }
+
+        @Override
+        public boolean contains(CharSequence name, Object value) {
+            return false;
+        }
+
+        @Override
+        public boolean contains(CharSequence name, Object value, boolean ignoreCase) {
+            return false;
+        }
+
+        @Override
+        public Iterator<Entry<String, String>> iterator() {
+            return entries().iterator();
+        }
+
+        @Override
+        public Iterator<Entry<CharSequence, CharSequence>> unconvertedIterator() {
+            return unconvertedEntries().iterator();
+        }
+
+        @Override
+        public TextHeaders forEachEntry(TextHeaderProcessor processor) {
+            return this;
+        }
+    };
 
     /**
      * Returns the value of a header with the specified name.  If there are
@@ -87,6 +220,8 @@ public interface TextHeaders extends Iterable<Map.Entry<String, String>> {
      * @return True if at least one header is found
      */
     boolean contains(CharSequence name);
+
+    int size();
 
     /**
      * Checks if no header exists.
@@ -225,4 +360,6 @@ public interface TextHeaders extends Iterable<Map.Entry<String, String>> {
     Iterator<Entry<String, String>> iterator();
 
     Iterator<Entry<CharSequence, CharSequence>> unconvertedIterator();
+
+    TextHeaders forEachEntry(TextHeaderProcessor processor);
 }

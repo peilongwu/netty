@@ -16,10 +16,11 @@
 
 package io.netty.handler.codec;
 
+import io.netty.util.internal.PlatformDependent;
+
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -31,7 +32,7 @@ public class DefaultTextHeaders implements TextHeaders {
     private static final int BUCKET_SIZE = 17;
 
     private static int index(int hash) {
-        return hash % BUCKET_SIZE;
+        return Math.abs(hash % BUCKET_SIZE);
     }
 
     @SuppressWarnings("unchecked")
@@ -363,18 +364,22 @@ public class DefaultTextHeaders implements TextHeaders {
             throw new NullPointerException("key");
         }
 
-        LinkedList<CharSequence> values = new LinkedList<CharSequence>();
+        int cnt = 0;
+        int size = size();
+        CharSequence[] values = new CharSequence[size];
 
         int h = hashKey(key);
         int i = index(h);
         HeaderEntry e = entries[i];
         while (e != null) {
             if (e.hash == h && keyEquals(e.key, key)) {
-                values.addFirst(e.getValue());
+                values[cnt ++] = e.getValue();
             }
             e = e.next;
         }
-        return values;
+
+        assert size == cnt;
+        return Arrays.asList(values);
     }
 
     @Override
@@ -383,40 +388,56 @@ public class DefaultTextHeaders implements TextHeaders {
             throw new NullPointerException("key");
         }
 
-        LinkedList<String> values = new LinkedList<String>();
+        int cnt = 0;
+        int size = size();
+        String[] values = new String[size];
 
         int h = hashKey(key);
         int i = index(h);
         HeaderEntry e = entries[i];
         while (e != null) {
             if (e.hash == h && keyEquals(e.key, key)) {
-                values.addFirst(e.getValue().toString());
+                values[cnt ++] = e.getValue().toString();
             }
             e = e.next;
         }
-        return values;
+
+        assert size == cnt;
+        return Arrays.asList(values);
     }
 
     @Override
     public List<Map.Entry<String, String>> entries() {
-        List<Map.Entry<String, String>> all = new LinkedList<Map.Entry<String, String>>();
+        int cnt = 0;
+        int size = size();
+        @SuppressWarnings("unchecked")
+        Map.Entry<String, String>[] all = new Map.Entry[size];
+
         HeaderEntry e = head.after;
         while (e != head) {
-            all.add(new StringHeaderEntry(e));
+            all[cnt ++] = new StringHeaderEntry(e);
             e = e.after;
         }
-        return all;
+
+        assert size == cnt;
+        return Arrays.asList(all);
     }
 
     @Override
     public List<Map.Entry<CharSequence, CharSequence>> unconvertedEntries() {
-        List<Map.Entry<CharSequence, CharSequence>> all = new LinkedList<Map.Entry<CharSequence, CharSequence>>();
+        int cnt = 0;
+        int size = size();
+        @SuppressWarnings("unchecked")
+        Map.Entry<CharSequence, CharSequence>[] all = new Map.Entry[size];
+
         HeaderEntry e = head.after;
         while (e != head) {
-            all.add(e);
+            all[cnt ++] = e;
             e = e.after;
         }
-        return all;
+
+        assert size == cnt;
+        return Arrays.asList(all);
     }
 
     @Override
@@ -432,6 +453,11 @@ public class DefaultTextHeaders implements TextHeaders {
     @Override
     public boolean contains(CharSequence key) {
         return getUnconverted(key) != null;
+    }
+
+    @Override
+    public int size() {
+        return size;
     }
 
     @Override
@@ -467,7 +493,7 @@ public class DefaultTextHeaders implements TextHeaders {
 
     @Override
     public Set<CharSequence> unconvertedNames() {
-        Set<CharSequence> keys = new LinkedHashSet<CharSequence>();
+        Set<CharSequence> keys = new LinkedHashSet<CharSequence>(size());
         HeaderEntry e = head.after;
         while (e != head) {
             keys.add(e.getKey());
@@ -478,13 +504,29 @@ public class DefaultTextHeaders implements TextHeaders {
 
     @Override
     public Set<String> names() {
-        Set<String> keys = new LinkedHashSet<String>();
+        Set<String> keys = new LinkedHashSet<String>(size());
         HeaderEntry e = head.after;
         while (e != head) {
             keys.add(e.getKey().toString());
             e = e.after;
         }
         return keys;
+    }
+
+    @Override
+    public TextHeaders forEachEntry(TextHeaderProcessor processor) {
+        HeaderEntry e = head.after;
+        try {
+            while (e != head) {
+                if (!processor.process(e.getKey(), e.getValue())) {
+                    break;
+                }
+                e = e.after;
+            }
+        } catch (Exception ex) {
+            PlatformDependent.throwException(ex);
+        }
+        return this;
     }
 
     private static final class HeaderEntry implements Map.Entry<CharSequence, CharSequence> {

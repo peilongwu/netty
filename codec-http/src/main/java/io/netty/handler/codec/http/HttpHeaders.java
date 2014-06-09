@@ -1180,83 +1180,6 @@ public abstract class HttpHeaders implements Iterable<Map.Entry<String, String>>
     }
 
     /**
-     * Validates the specified header value
-     *
-     * @param headerValue The value being validated
-     */
-    static void validateHeaderValue(CharSequence headerValue) {
-        //Check to see if the value is null
-        if (headerValue == null) {
-            throw new NullPointerException("Header values cannot be null");
-        }
-
-        /*
-         * Set up the state of the validation
-         *
-         * States are as follows:
-         *
-         * 0: Previous character was neither CR nor LF
-         * 1: The previous character was CR
-         * 2: The previous character was LF
-         */
-        int state = 0;
-
-        //Start looping through each of the character
-
-        for (int index = 0; index < headerValue.length(); index ++) {
-            char character = headerValue.charAt(index);
-
-            //Check the absolutely prohibited characters.
-            switch (character) {
-                case 0x0b: // Vertical tab
-                    throw new IllegalArgumentException(
-                            "Header value contains a prohibited character '\\v': " + headerValue);
-                case '\f':
-                    throw new IllegalArgumentException(
-                            "Header value contains a prohibited character '\\f': " + headerValue);
-            }
-
-            // Check the CRLF (HT | SP) pattern
-            switch (state) {
-                case 0:
-                    switch (character) {
-                        case '\r':
-                            state = 1;
-                            break;
-                        case '\n':
-                            state = 2;
-                            break;
-                    }
-                    break;
-                case 1:
-                    switch (character) {
-                        case '\n':
-                            state = 2;
-                            break;
-                        default:
-                            throw new IllegalArgumentException(
-                                    "Only '\\n' is allowed after '\\r': " + headerValue);
-                    }
-                    break;
-                case 2:
-                    switch (character) {
-                        case '\t': case ' ':
-                            state = 0;
-                            break;
-                        default:
-                            throw new IllegalArgumentException(
-                                    "Only ' ' and '\\t' are allowed after '\\n': " + headerValue);
-                    }
-            }
-        }
-
-        if (state != 0) {
-            throw new IllegalArgumentException(
-                    "Header value must not end with '\\r' or '\\n':" + headerValue);
-        }
-    }
-
-    /**
      * Checks to see if the transfer encoding in a specified {@link HttpMessage} is chunked
      *
      * @param message The message to check
@@ -1624,14 +1547,14 @@ public abstract class HttpHeaders implements Iterable<Map.Entry<String, String>>
     /**
      * @see {@link #contains(CharSequence, CharSequence, boolean)}
      */
-    public boolean contains(String name, String value, boolean ignoreCaseValue) {
+    public boolean contains(String name, String value, boolean ignoreCase) {
         List<String> values = getAll(name);
         if (values.isEmpty()) {
             return false;
         }
 
         for (String v: values) {
-            if (ignoreCaseValue) {
+            if (ignoreCase) {
                 if (equalsIgnoreCase(v, value)) {
                     return true;
                 }
@@ -1647,12 +1570,12 @@ public abstract class HttpHeaders implements Iterable<Map.Entry<String, String>>
     /**
      * Returns {@code true} if a header with the name and value exists.
      *
-     * @param name              the headername
-     * @param value             the value
-     * @param ignoreCaseValue   {@code true} if case should be ignored
-     * @return contains         {@code true} if it contains it {@code false} otherwise
+     * @param name         the headername
+     * @param value        the value
+     * @param ignoreCase   {@code true} if case should be ignored
+     * @return contains    {@code true} if it contains it {@code false} otherwise
      */
-    public boolean contains(CharSequence name, CharSequence value, boolean ignoreCaseValue) {
-        return contains(name.toString(), value.toString(), ignoreCaseValue);
+    public boolean contains(CharSequence name, CharSequence value, boolean ignoreCase) {
+        return contains(name.toString(), value.toString(), ignoreCase);
     }
 }
