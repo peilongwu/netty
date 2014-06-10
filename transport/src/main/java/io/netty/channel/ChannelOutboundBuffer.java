@@ -58,8 +58,7 @@ public final class ChannelOutboundBuffer {
         logger.debug("-Dio.netty.threadLocalDirectBufferSize: {}", threadLocalDirectBufferSize);
     }
 
-    private static final Recycler<ChannelOutboundBuffer> RECYCLER
-    = new Recycler<ChannelOutboundBuffer>(FastThreadLocal.Type.ChannelOutboundBuffer_Recycler) {
+    private static final Recycler<ChannelOutboundBuffer> RECYCLER = new Recycler<ChannelOutboundBuffer>() {
         @Override
         protected ChannelOutboundBuffer newObject(Handle handle) {
             return new ChannelOutboundBuffer(handle);
@@ -695,8 +694,7 @@ public final class ChannelOutboundBuffer {
     static final class ThreadLocalPooledByteBuf extends UnpooledDirectByteBuf {
         private final Recycler.Handle handle;
 
-        private static final Recycler<ThreadLocalPooledByteBuf> RECYCLER
-        = new Recycler<ThreadLocalPooledByteBuf>(FastThreadLocal.Type.ChannelOutboundBuffer_PooledByteBuf_Recycler) {
+        private static final Recycler<ThreadLocalPooledByteBuf> RECYCLER = new Recycler<ThreadLocalPooledByteBuf>() {
             @Override
             protected ThreadLocalPooledByteBuf newObject(Handle handle) {
                 return new ThreadLocalPooledByteBuf(handle);

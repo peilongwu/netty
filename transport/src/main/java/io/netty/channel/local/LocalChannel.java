@@ -47,8 +47,7 @@ public class LocalChannel extends AbstractChannel {
     private static final ChannelMetadata METADATA = new ChannelMetadata(false);
 
     private static final int MAX_READER_STACK_DEPTH = 8;
-    private static final FastThreadLocal<Integer> READER_STACK_DEPTH
-    = new FastThreadLocal<Integer>(FastThreadLocal.Type.LocalChannel_ReaderStackDepth) {
+    private static final FastThreadLocal<Integer> READER_STACK_DEPTH = new FastThreadLocal<Integer>() {
         @Override
         protected Integer initialValue() {
             return 0;

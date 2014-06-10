@@ -34,8 +34,7 @@ public final class RecyclableArrayList extends ArrayList<Object> {
 
     private static final int DEFAULT_INITIAL_CAPACITY = 8;
 
-    private static final Recycler<RecyclableArrayList> RECYCLER
-    = new Recycler<RecyclableArrayList>(FastThreadLocal.Type.RecyclableArrayList_Recycler) {
+    private static final Recycler<RecyclableArrayList> RECYCLER = new Recycler<RecyclableArrayList>() {
         @Override
         protected RecyclableArrayList newObject(Handle handle) {
             return new RecyclableArrayList(handle);

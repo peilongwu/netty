@@ -16,8 +16,6 @@
 package io.netty.channel;
 
 import static io.netty.channel.DefaultChannelPipeline.logger;
-import static io.netty.util.concurrent.FastThreadLocal.Type.DefaultChannelHandlerContext_WriteAndFlushTask_Recycler;
-import static io.netty.util.concurrent.FastThreadLocal.Type.DefaultChannelHandlerContext_WriteTask_Recycler;
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.DefaultAttributeMap;
@@ -953,8 +951,7 @@ final class DefaultChannelHandlerContext extends DefaultAttributeMap implements 
 
     static final class WriteTask extends AbstractWriteTask implements SingleThreadEventLoop.NonWakeupRunnable {
 
-        private static final Recycler<WriteTask> RECYCLER
-        = new Recycler<WriteTask>(DefaultChannelHandlerContext_WriteTask_Recycler) {
+        private static final Recycler<WriteTask> RECYCLER = new Recycler<WriteTask>() {
             @Override
             protected WriteTask newObject(Handle handle) {
                 return new WriteTask(handle);
@@ -980,8 +977,7 @@ final class DefaultChannelHandlerContext extends DefaultAttributeMap implements 
 
     static final class WriteAndFlushTask extends AbstractWriteTask {
 
-        private static final Recycler<WriteAndFlushTask> RECYCLER
-        = new Recycler<WriteAndFlushTask>(DefaultChannelHandlerContext_WriteAndFlushTask_Recycler) {
+        private static final Recycler<WriteAndFlushTask> RECYCLER = new Recycler<WriteAndFlushTask>() {
             @Override
             protected WriteAndFlushTask newObject(Handle handle) {
                 return new WriteAndFlushTask(handle);

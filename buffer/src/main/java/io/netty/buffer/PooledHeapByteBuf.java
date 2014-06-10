@@ -28,8 +28,7 @@ import java.nio.channels.ScatteringByteChannel;
 
 final class PooledHeapByteBuf extends PooledByteBuf<byte[]> {
 
-    private static final Recycler<PooledHeapByteBuf> RECYCLER
-    = new Recycler<PooledHeapByteBuf>(FastThreadLocal.Type.PooledHeapByteBuf_Recycler) {
+    private static final Recycler<PooledHeapByteBuf> RECYCLER = new Recycler<PooledHeapByteBuf>() {
         @Override
         protected PooledHeapByteBuf newObject(Handle handle) {
             return new PooledHeapByteBuf(handle, 0);

@@ -58,14 +58,13 @@ public abstract class Recycler<T> {
     private final int maxCapacity;
     private final FastThreadLocal<Stack<T>> threadLocal;
 
-    protected Recycler(FastThreadLocal.Type type) {
-        this(DEFAULT_MAX_CAPACITY, type);
+    protected Recycler() {
+        this(DEFAULT_MAX_CAPACITY);
     }
 
-    public Recycler(int maxCapacity, FastThreadLocal.Type type) {
-        super();
+    public Recycler(int maxCapacity) {
         this.maxCapacity = Math.max(0, maxCapacity);
-        threadLocal = new FastThreadLocal<Stack<T>>(type) {
+        threadLocal = new FastThreadLocal<Stack<T>>() {
             @Override
             protected Stack<T> initialValue() {
                 return new Stack<T>(Recycler.this, Thread.currentThread(), Recycler.this.maxCapacity);

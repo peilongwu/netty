@@ -15,11 +15,15 @@
  */
 package io.netty.util.concurrent;
 
-import java.util.EnumMap;
+import io.netty.util.internal.SystemPropertyUtil;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
+
+import java.util.Arrays;
 
 /**
  * A simple class providing equivalent functionality to java.lang,ThreadLocal, but operating
- * over a predefined hash range, so that we can hash perfectly. This permits less indirection
+ * over a predefined array, so it always operate in 0(1). This permits less indirection
  * and offers a slight performance improvement, so is useful when invoked frequently.
  *
  * The fast path is only possible on threads that extend FastThreadLocalThread, as this class
@@ -28,97 +32,83 @@ import java.util.EnumMap;
  * @param <V>
  */
 public class FastThreadLocal<V> {
-
-    public static enum Type {
-        LocalChannel_ReaderStackDepth,
-        PooledDirectByteBuf_Recycler,
-        PooledHeapByteBuf_Recycler,
-        PooledUnsafeDirectByteBuf_Recycler,
-        ChannelOutboundBuffer_Recycler,
-        ChannelOutboundBuffer_PooledByteBuf_Recycler,
-        DefaultChannelHandlerContext_WriteAndFlushTask_Recycler,
-        DefaultChannelHandlerContext_WriteTask_Recycler,
-        PendingWrite_Recycler,
-        RecyclableArrayList_Recycler,
-        DefaultPromise_ListenerStackDepth,
-        PooledByteBufAllocator_DefaultAllocator
-    }
-
-    // the set of already defined FastThreadLocals
-    private static final EnumMap<Type, Boolean> SET = new EnumMap<Type, Boolean>(Type.class);
-    // the type values, for cheap iteration
-    private static final Type[] TYPES = Type.values();
-    // a marker to indicate a value has not yet been initialised
+    private static final InternalLogger LOGGER = InternalLoggerFactory.getInstance(FastThreadLocal.class);
     private static final Object EMPTY = new Object();
+    private static final int MAX_TYPES;
+
+    static {
+        MAX_TYPES = SystemPropertyUtil.getInt("io.netty.fastthreadlocal.maxTypes", 64);
+        LOGGER.debug("-Dio.netty.fastthreadlocal.maxTypes: {}", MAX_TYPES);
+    }
 
     /**
      * To utilise the FastThreadLocal fast-path, all threads accessing a FastThreadLocal must extend this class
      */
     public static class FastThreadLocalThread extends Thread {
 
-        private final EnumMap<Type, Object> lookup = initialMap();
-
-        static EnumMap<Type, Object> initialMap() {
-            EnumMap<Type, Object> r = new EnumMap<Type, Object>(Type.class);
-            for (Type type : TYPES) {
-                r.put(type, EMPTY);
-            }
-            return r;
-        }
+        private final Object[] lookup = new Object[MAX_TYPES];
 
         public FastThreadLocalThread() {
             super();
+            Arrays.fill(lookup, EMPTY);
         }
 
         public FastThreadLocalThread(Runnable target) {
             super(target);
+            Arrays.fill(lookup, EMPTY);
         }
 
         public FastThreadLocalThread(ThreadGroup group, Runnable target) {
             super(group, target);
+            Arrays.fill(lookup, EMPTY);
         }
 
         public FastThreadLocalThread(String name) {
             super(name);
+            Arrays.fill(lookup, EMPTY);
         }
 
         public FastThreadLocalThread(ThreadGroup group, String name) {
             super(group, name);
+            Arrays.fill(lookup, EMPTY);
         }
 
         public FastThreadLocalThread(Runnable target, String name) {
             super(target, name);
+            Arrays.fill(lookup, EMPTY);
         }
 
         public FastThreadLocalThread(ThreadGroup group, Runnable target, String name) {
             super(group, target, name);
+            Arrays.fill(lookup, EMPTY);
         }
 
         public FastThreadLocalThread(ThreadGroup group, Runnable target, String name, long stackSize) {
             super(group, target, name, stackSize);
+            Arrays.fill(lookup, EMPTY);
         }
     }
 
-    final Type type;
-    final ThreadLocal<V> fallback = new ThreadLocal<V>() {
+    private static int nextIndex;
+    private final int index;
+    private final ThreadLocal<V> fallback = new ThreadLocal<V>() {
+        @Override
         protected V initialValue() {
             return FastThreadLocal.this.initialValue();
         }
     };
 
-    /**
-     * @param type the predefined type this FastThreadLocal represents; each type may be used only once
-     *             globally in a single VM
-     */
-    public FastThreadLocal(Type type) {
-        if (type != null) {
-            synchronized (SET) {
-                if (SET.put(type, Boolean.TRUE) != null) {
-                    throw new IllegalStateException(type + " has been assigned multiple times");
-                }
+    public FastThreadLocal() {
+        synchronized (FastThreadLocal.class) {
+            if (nextIndex >= MAX_TYPES) {
+                LOGGER.info("Maximal number of optimized ThreadLocal reached. Fallback to normal ThreadLocal");
+                // No more space in the backing array so fall-back to ThreadLocal
+                index = -1;
+            } else {
+                index = nextIndex;
+                nextIndex++;
             }
         }
-        this.type = type;
     }
 
     /**
@@ -137,12 +127,12 @@ public class FastThreadLocal<V> {
      */
     public void set(V value) {
         Thread thread = Thread.currentThread();
-        if (type == null || !(thread instanceof FastThreadLocalThread)) {
+        if (index == -1 || !(thread instanceof FastThreadLocalThread)) {
             fallback.set(value);
             return;
         }
-        EnumMap<Type, Object> lookup = ((FastThreadLocalThread) thread).lookup;
-        lookup.put(type, value);
+        Object[] lookup = ((FastThreadLocalThread) thread).lookup;
+        lookup[index] = value;
     }
 
     /**
@@ -150,12 +140,12 @@ public class FastThreadLocal<V> {
      */
     public void remove() {
         Thread thread = Thread.currentThread();
-        if (type == null || !(thread instanceof FastThreadLocalThread)) {
+        if (index == -1 || !(thread instanceof FastThreadLocalThread)) {
             fallback.remove();
             return;
         }
-        EnumMap<Type, Object> lookup = ((FastThreadLocalThread) thread).lookup;
-        lookup.put(type, EMPTY);
+        Object[] lookup = ((FastThreadLocalThread) thread).lookup;
+        lookup[index] = EMPTY;
     }
 
     /**
@@ -163,13 +153,13 @@ public class FastThreadLocal<V> {
      */
     public final V get() {
         Thread thread = Thread.currentThread();
-        if (type == null || !(thread instanceof FastThreadLocalThread)) {
+        if (index == -1 || !(thread instanceof FastThreadLocalThread)) {
             return fallback.get();
         }
-        EnumMap<Type, Object> lookup = ((FastThreadLocalThread) thread).lookup;
-        Object v = lookup.get(type);
+        Object[] lookup = ((FastThreadLocalThread) thread).lookup;
+        Object v = lookup[index];
         if (v == EMPTY) {
-            lookup.put(type, v = initialValue());
+            lookup[index] = v = initialValue();
         }
         return (V) v;
     }
