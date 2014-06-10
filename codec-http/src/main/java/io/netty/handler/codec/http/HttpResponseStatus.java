@@ -454,7 +454,11 @@ public class HttpResponseStatus implements Comparable<HttpResponseStatus> {
     }
 
     /**
-     * Parses the specified HTTP status line into a {@link HttpResponseStatus}.
+     * Parses the specified HTTP status line into a {@link HttpResponseStatus}.  The expected formats of the line are:
+     * <ul>
+     * <li>{@code statusCode} (e.g. 200)</li>
+     * <li>{@code statusCode} {@code reasonPhrase} (e.g. 404 Not Found)</li>
+     * </ul>
      *
      * @throws IllegalArgumentException if the specified status line is malformed
      */
