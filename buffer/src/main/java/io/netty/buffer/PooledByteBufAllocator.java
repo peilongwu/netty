@@ -17,7 +17,7 @@
 package io.netty.buffer;
 
 import io.netty.util.ThreadDeathWatcher;
-import io.netty.util.concurrent.FastThreadLocal;
+import io.netty.util.internal.FastThreadLocal;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;

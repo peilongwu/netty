@@ -17,6 +17,7 @@ package io.netty.util.concurrent;
 
 import io.netty.util.Signal;
 import io.netty.util.internal.EmptyArrays;
+import io.netty.util.internal.FastThreadLocal;
 import io.netty.util.internal.PlatformDependent;
 import io.netty.util.internal.StringUtil;
 import io.netty.util.internal.logging.InternalLogger;

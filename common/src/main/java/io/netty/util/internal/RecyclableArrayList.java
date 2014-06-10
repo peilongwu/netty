@@ -18,7 +18,6 @@ package io.netty.util.internal;
 
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
-import io.netty.util.concurrent.FastThreadLocal;
 
 import java.util.ArrayList;
 import java.util.Collection;

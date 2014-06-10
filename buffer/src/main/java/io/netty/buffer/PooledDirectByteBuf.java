@@ -17,7 +17,6 @@
 package io.netty.buffer;
 
 import io.netty.util.Recycler;
-import io.netty.util.concurrent.FastThreadLocal;
 
 import java.io.IOException;
 import java.io.InputStream;

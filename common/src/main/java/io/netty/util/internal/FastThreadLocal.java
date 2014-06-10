@@ -13,9 +13,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package io.netty.util.concurrent;
+package io.netty.util.internal;
 
-import io.netty.util.internal.SystemPropertyUtil;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
@@ -49,7 +49,6 @@ public class FastThreadLocal<V> {
         private final Object[] lookup = new Object[MAX_TYPES];
 
         public FastThreadLocalThread() {
-            super();
             Arrays.fill(lookup, EMPTY);
         }
 
@@ -89,6 +88,45 @@ public class FastThreadLocal<V> {
         }
     }
 
+    public static final class FastThreadLocalThreadFactory extends DefaultThreadFactory {
+        public FastThreadLocalThreadFactory(Class<?> poolType) {
+            super(poolType);
+        }
+
+        public FastThreadLocalThreadFactory(String poolName) {
+            super(poolName);
+        }
+
+        public FastThreadLocalThreadFactory(Class<?> poolType, boolean daemon) {
+            super(poolType, daemon);
+        }
+
+        public FastThreadLocalThreadFactory(String poolName, boolean daemon) {
+            super(poolName, daemon);
+        }
+
+        public FastThreadLocalThreadFactory(Class<?> poolType, int priority) {
+            super(poolType, priority);
+        }
+
+        public FastThreadLocalThreadFactory(String poolName, int priority) {
+            super(poolName, priority);
+        }
+
+        public FastThreadLocalThreadFactory(Class<?> poolType, boolean daemon, int priority) {
+            super(poolType, daemon, priority);
+        }
+
+        public FastThreadLocalThreadFactory(String poolName, boolean daemon, int priority) {
+            super(poolName, daemon, priority);
+        }
+
+        @Override
+        protected Thread newThread(Runnable r, String name) {
+            return new FastThreadLocalThread(r, name);
+        }
+    }
+
     private static int nextIndex;
     private final int index;
     private final ThreadLocal<V> fallback = new ThreadLocal<V>() {
@@ -123,7 +161,6 @@ public class FastThreadLocal<V> {
 
     /**
      * Set the value for the current thread
-     * @param value
      */
     public void set(V value) {
         Thread thread = Thread.currentThread();
@@ -151,6 +188,7 @@ public class FastThreadLocal<V> {
     /**
      * @return the current value for the current thread
      */
+    @SuppressWarnings("unchecked")
     public final V get() {
         Thread thread = Thread.currentThread();
         if (index == -1 || !(thread instanceof FastThreadLocalThread)) {

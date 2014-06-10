@@ -23,7 +23,7 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-import io.netty.util.concurrent.FastThreadLocal;
+import io.netty.util.internal.FastThreadLocal;
 
 /**
  * Light-weight object pool based on a thread-local stack.
