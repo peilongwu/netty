@@ -19,9 +19,8 @@ import io.netty.handler.codec.AsciiString;
 import io.netty.handler.codec.DefaultTextHeaders;
 import io.netty.handler.codec.TextHeaderProcessor;
 import io.netty.handler.codec.TextHeaders;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpVersion;
+
+import java.util.Locale;
 
 
 public class DefaultSpdyHeaders extends DefaultTextHeaders implements SpdyHeaders {
@@ -31,7 +30,7 @@ public class DefaultSpdyHeaders extends DefaultTextHeaders implements SpdyHeader
         if (name instanceof AsciiString) {
             name = ((AsciiString) name).toLowerCase();
         } else {
-            name = name.toString().toLowerCase();
+            name = name.toString().toLowerCase(Locale.US);
         }
         SpdyCodecUtil.validateHeaderName(name);
         return name;
@@ -52,127 +51,6 @@ public class DefaultSpdyHeaders extends DefaultTextHeaders implements SpdyHeader
 
         SpdyCodecUtil.validateHeaderValue(seq);
         return seq;
-    }
-
-    @Override
-    public boolean removeHost() {
-        return remove(HttpNames.HOST);
-    }
-
-    @Override
-    public String getHost() {
-        return get(HttpNames.HOST);
-    }
-
-    @Override
-    public SpdyHeaders setHost(String host) {
-        set(HttpNames.HOST, host);
-        return this;
-    }
-
-    @Override
-    public boolean removeMethod(int spdyVersion) {
-        return remove(HttpNames.METHOD);
-    }
-
-    @Override
-    public HttpMethod getMethod(int spdyVersion) {
-        try {
-            return HttpMethod.valueOf(get(HttpNames.METHOD));
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    @Override
-    public SpdyHeaders setMethod(int spdyVersion, HttpMethod method) {
-        set(HttpNames.METHOD, method.name());
-        return this;
-    }
-
-    @Override
-    public boolean removeScheme(int spdyVersion) {
-        return remove(HttpNames.SCHEME);
-    }
-
-    @Override
-    public String getScheme(int spdyVersion) {
-        return get(HttpNames.SCHEME);
-    }
-
-    @Override
-    public SpdyHeaders setScheme(int spdyVersion, String scheme) {
-        set(HttpNames.SCHEME, scheme);
-        return this;
-    }
-
-    @Override
-    public boolean removeStatus(int spdyVersion) {
-        return remove(HttpNames.STATUS);
-    }
-
-    @Override
-    public HttpResponseStatus getStatus(int spdyVersion) {
-        try {
-            String status = get(HttpNames.STATUS);
-            int space = status.indexOf(' ');
-            if (space == -1) {
-                return HttpResponseStatus.valueOf(Integer.parseInt(status));
-            } else {
-                int code = Integer.parseInt(status.substring(0, space));
-                String reasonPhrase = status.substring(space + 1);
-                HttpResponseStatus responseStatus = HttpResponseStatus.valueOf(code);
-                if (responseStatus.reasonPhrase().equals(reasonPhrase)) {
-                    return responseStatus;
-                } else {
-                    return new HttpResponseStatus(code, reasonPhrase);
-                }
-            }
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    @Override
-    public SpdyHeaders setStatus(int spdyVersion, HttpResponseStatus status) {
-        set(HttpNames.STATUS, status.toString());
-        return this;
-    }
-
-    @Override
-    public boolean removePath(int spdyVersion) {
-        return remove(HttpNames.PATH);
-    }
-
-    @Override
-    public String getPath(int spdyVersion) {
-        return get(HttpNames.PATH);
-    }
-
-    @Override
-    public SpdyHeaders setPath(int spdyVersion, String path) {
-        set(HttpNames.PATH, path);
-        return this;
-    }
-
-    @Override
-    public boolean removeVersion(int spdyVersion) {
-        return remove(HttpNames.VERSION);
-    }
-
-    @Override
-    public HttpVersion getVersion(int spdyVersion) {
-        try {
-            return HttpVersion.valueOf(get(HttpNames.VERSION));
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    @Override
-    public SpdyHeaders setVersion(int spdyVersion, HttpVersion httpVersion) {
-        set(HttpNames.VERSION, httpVersion.text());
-        return this;
     }
 
     @Override

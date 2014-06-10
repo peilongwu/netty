@@ -750,7 +750,7 @@ public final class AsciiString implements CharSequence, Comparable<CharSequence>
         }
 
         char firstChar = subString.charAt(0);
-        while (true) {
+        for (;;) {
             int i = indexOf(firstChar, start);
             if (i == -1 || subCount + i > thisLen) {
                 return -1; // handles subCount > count || start >= count
@@ -853,7 +853,7 @@ public final class AsciiString implements CharSequence, Comparable<CharSequence>
 
         // count and subCount are both >= 1
         char firstChar = subString.charAt(0);
-        while (true) {
+        for (;;) {
             int i = lastIndexOf(firstChar, start);
             if (i == -1) {
                 return -1;
