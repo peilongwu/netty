@@ -31,7 +31,7 @@ import java.util.Arrays;
  *
  * @param <V>
  */
-public class FastThreadLocal<V> {
+public class FastThreadLocal<V> extends ThreadLocal<V> {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getInstance(FastThreadLocal.class);
     private static final Object EMPTY = new Object();
     private static final int MAX_TYPES;
@@ -150,18 +150,9 @@ public class FastThreadLocal<V> {
     }
 
     /**
-     * Override this method to define the default value to assign
-     * when a thread first calls get() without a preceding set()
-     *
-     * @return the initial value
-     */
-    protected V initialValue() {
-        return null;
-    }
-
-    /**
      * Set the value for the current thread
      */
+    @Override
     public void set(V value) {
         Thread thread = Thread.currentThread();
         if (index == -1 || !(thread instanceof FastThreadLocalThread)) {
@@ -175,6 +166,7 @@ public class FastThreadLocal<V> {
     /**
      * Sets the value to uninitialized; a proceeding call to get() will trigger a call to initialValue()
      */
+    @Override
     public void remove() {
         Thread thread = Thread.currentThread();
         if (index == -1 || !(thread instanceof FastThreadLocalThread)) {
@@ -188,6 +180,7 @@ public class FastThreadLocal<V> {
     /**
      * @return the current value for the current thread
      */
+    @Override
     @SuppressWarnings("unchecked")
     public final V get() {
         Thread thread = Thread.currentThread();
